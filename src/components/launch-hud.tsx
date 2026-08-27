@@ -60,7 +60,7 @@ export function LaunchHud() {
       ) : null}
 
       {showApproach ? (
-        <div className="pointer-events-none absolute top-1/2 left-1/2 z-10 w-[min(92vw,22rem)] -translate-x-1/2 -translate-y-[8.5rem] rounded-lg border border-border bg-surface px-4 py-3 text-center">
+        <div className="pointer-events-none absolute top-28 left-1/2 z-10 w-[min(92vw,22rem)] -translate-x-1/2 rounded-lg border border-border bg-surface px-4 py-3 text-center sm:top-4">
           <p className="font-display text-lg text-fg">
             Approaching {mission.dest ? BODIES[mission.dest].name : "target"}
           </p>
@@ -86,7 +86,7 @@ export function LaunchHud() {
       ) : null}
 
       {showTrip ? (
-        <div className="pointer-events-auto absolute top-1/2 left-1/2 z-10 w-[min(92vw,22rem)] -translate-x-1/2 -translate-y-[7.5rem] rounded-lg border border-border bg-surface px-4 py-3 text-center">
+        <div className="pointer-events-auto absolute top-28 left-1/2 z-10 w-[min(92vw,22rem)] -translate-x-1/2 rounded-lg border border-border bg-surface px-4 py-3 text-center sm:top-4">
           <p className="font-display text-lg text-fg">
             Trip of {Math.round(mission.tripDays)} days to {mission.dest ? BODIES[mission.dest].name : "—"}
           </p>

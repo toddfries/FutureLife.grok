@@ -72,6 +72,8 @@ const APPROACH_SEC = 20;
 const FUEL_SEC = 5;
 const TANKER_SEC = 9;
 const CLEAR_SEC = 10;
+/** Hull-to-hull gap ~0.4 m — two Starships parked parallel, nearly touching. */
+const DOCK_X = 3.15;
 
 const _dir = new THREE.Vector3();
 const _cam = new THREE.Vector3();
@@ -248,12 +250,12 @@ export class Mission {
     if (phase === "fuel") {
       this.fueling = true;
       this.fuel = 0.08;
-      this.callout = "Hard dock · LOX / CH4 transfer";
+      this.callout = "Alongside · LOX / CH4 transfer";
     } else {
       this.fueling = false;
     }
     if (phase === "tanker") this.callout = "Tanker rendezvous";
-    if (phase === "undock") this.callout = "Undock · tanker peels away";
+    if (phase === "undock") this.callout = "Undock · tanker peels aside";
     if (phase === "burn") this.callout = "Trans-planetary burn";
     if (phase === "approach") this.callout = this.dest ? `Approaching ${BODIES[this.dest].name}` : "Approach";
     if (phase === "board") this.callout = "Boarding";
@@ -400,24 +402,24 @@ export class Mission {
     const u = Math.min(1, this.t / TANKER_SEC);
     this.th.tanker.visible = true;
     this.th.flameT.visible = u < 0.78;
-    const p = this.th.fly.position;
     this.th.fly.position.set(0, 520, 0);
     this.th.fly.rotation.set(-1.15, 0, 0);
     this.th.flyShip.position.y = 0;
-    // Approach from far/high → match attitude → close to stack-dock above the ship.
-    const ax = THREE.MathUtils.lerp(48, 0.2, easeOut(Math.min(1, u / 0.55)));
-    const ay = THREE.MathUtils.lerp(36, 16.6, easeOut(u));
-    const az = THREE.MathUtils.lerp(-40, 0.4, easeOut(Math.min(1, u / 0.7)));
+    const p = this.th.fly.position;
+    // Slide in from the flank and match pitch — never stack like a probe-and-drogue.
+    const ax = THREE.MathUtils.lerp(36, DOCK_X, easeOut(Math.min(1, u / 0.75)));
+    const ay = THREE.MathUtils.lerp(5, 0, easeOut(u));
+    const az = THREE.MathUtils.lerp(-22, 0, easeOut(Math.min(1, u / 0.8)));
     this.th.tanker.position.set(p.x + ax, p.y + ay, p.z + az);
     this.th.tanker.rotation.copy(this.th.fly.rotation);
-    this.th.tanker.rotation.z = (1 - u) * 0.18;
-    const docked = u > 0.82;
-    this.shipNoses();
+    this.th.tanker.rotation.z = (1 - u) * 0.1;
+    const docked = u > 0.84;
+    this.shipPorts();
     placeBoom(this.th, _shipNose, _tankNose, docked);
     this.speedKm = 28000;
     this.altKm = 220;
-    this.engines = docked ? "soft dock" : "RCS";
-    this.callout = u < 0.45 ? "Tanker on approach" : u < 0.82 ? "Aligning ports" : "Soft dock";
+    this.engines = docked ? "alongside" : "RCS";
+    this.callout = u < 0.45 ? "Tanker on approach" : u < 0.84 ? "Matching attitude" : "Alongside";
     this.dockCam(dt);
     if (u >= 1) this.enter("fuel");
   }
@@ -428,12 +430,12 @@ export class Mission {
     this.fuel = 0.08 + 0.92 * u;
     this.th.tanker.visible = true;
     const p = this.th.fly.position;
-    this.th.tanker.position.set(p.x, p.y + 16.6 + Math.sin(this.t * 1.3) * 0.08, p.z + 0.4);
+    this.th.tanker.position.set(p.x + DOCK_X, p.y + Math.sin(this.t * 1.2) * 0.04, p.z);
     this.th.tanker.rotation.copy(this.th.fly.rotation);
     this.th.flameT.visible = false;
     this.th.flameS.visible = false;
-    this.shipNoses();
-    placeBoom(this.th, _shipNose, _tankNose, true);
+    this.shipPorts();
+    placeBoom(this.th, _shipNose, _tankNose, true, true);
     this.speedKm = 27500;
     this.altKm = 220;
     this.engines = "transfer";
@@ -450,11 +452,12 @@ export class Mission {
     const u = Math.min(1, this.t / 2.4);
     const p = this.th.fly.position;
     this.th.tanker.visible = true;
-    this.th.tanker.position.set(p.x + u * 22, p.y + 16.6 + u * 10, p.z - u * 18);
+    this.th.tanker.position.set(p.x + DOCK_X + u * 16, p.y + u * 2.5, p.z - u * 8);
     this.th.tanker.rotation.copy(this.th.fly.rotation);
-    this.th.tanker.rotation.z = u * 0.35;
+    this.th.tanker.rotation.z = u * 0.12;
     this.th.flameT.visible = u > 0.2;
-    placeBoom(this.th, _shipNose, _tankNose, u < 0.28);
+    this.shipPorts();
+    placeBoom(this.th, _shipNose, _tankNose, u < 0.18);
     this.speedKm = 27800;
     this.engines = "RCS";
     this.dockCam(dt);
@@ -616,11 +619,11 @@ export class Mission {
     this.followStack(dt, 60, 0.2);
   }
 
-  private shipNoses() {
+  private shipPorts() {
     this.th.fly.updateMatrixWorld();
     this.th.tanker.updateMatrixWorld();
-    _shipNose.set(0, 14, 0).applyMatrix4(this.th.flyShip.matrixWorld);
-    _tankNose.set(0, 0.6, 0).applyMatrix4(this.th.tanker.matrixWorld);
+    _shipNose.set(1.22, 6.4, 0).applyMatrix4(this.th.fly.matrixWorld);
+    _tankNose.set(-1.22, 6.4, 0).applyMatrix4(this.th.tanker.matrixWorld);
   }
 
   private pulseFlames(t: number) {
@@ -645,10 +648,11 @@ export class Mission {
     const p = this.th.fly.position;
     const tk = this.th.tanker.position;
     _look.copy(p).lerp(tk, 0.5);
-    _cam.set(_look.x + 36, _look.y + 4, _look.z + 32);
-    this.cam.position.lerp(_cam, 1 - Math.exp(-dt * 2.4));
+    _look.y += 6.5;
+    _cam.set(_look.x - 4, _look.y + 7, _look.z + 22);
+    this.cam.position.lerp(_cam, 1 - Math.exp(-dt * 2.8));
     this.cam.lookAt(_look);
-    this.cam.fov = THREE.MathUtils.damp(this.cam.fov, 50, 4, dt);
+    this.cam.fov = THREE.MathUtils.damp(this.cam.fov, 38, 4, dt);
     this.cam.updateProjectionMatrix();
   }
 

@@ -188,15 +188,18 @@ export function makeTheater(): Theater {
   root.add(fly);
 
   const tanker = makeStarship(mats, false);
-  tanker.scale.setScalar(1.12);
   tanker.visible = false;
   const flameT = flameMesh();
   tanker.add(flameT);
   root.add(tanker);
 
   const boom = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.16, 0.16, 1, 8),
-    new THREE.MeshPhongMaterial({ color: 0xa8b0b6, shininess: 80 }),
+    new THREE.CylinderGeometry(0.03, 0.03, 1, 8),
+    new THREE.MeshPhongMaterial({
+      color: 0xb8c0c6,
+      emissive: 0x000000,
+      shininess: 90,
+    }),
   );
   boom.visible = false;
   root.add(boom);
@@ -331,15 +334,28 @@ const _boomDir = new THREE.Vector3();
 const _boomMid = new THREE.Vector3();
 const _up = new THREE.Vector3(0, 1, 0);
 
-export function placeBoom(th: Theater, from: THREE.Vector3, to: THREE.Vector3, on: boolean) {
-  th.boom.visible = on;
-  if (!on) return;
-  _boomMid.copy(from).add(to).multiplyScalar(0.5);
+export function placeBoom(
+  th: Theater,
+  from: THREE.Vector3,
+  to: THREE.Vector3,
+  on: boolean,
+  pumping = false,
+) {
+  const mat = th.boom.material as THREE.MeshPhongMaterial;
   _boomDir.copy(to).sub(from);
-  const len = _boomDir.length() || 0.01;
+  const len = _boomDir.length();
+  if (!on || len > 1.1 || len < 0.08) {
+    th.boom.visible = false;
+    mat.emissive.setHex(0x000000);
+    return;
+  }
+  th.boom.visible = true;
+  _boomMid.copy(from).add(to).multiplyScalar(0.5);
   th.boom.position.copy(_boomMid);
   th.boom.scale.set(1, len, 1);
   th.boom.quaternion.setFromUnitVectors(_up, _boomDir.multiplyScalar(1 / len));
+  mat.emissive.setHex(pumping ? 0x3a6a88 : 0x000000);
+  mat.emissiveIntensity = pumping ? 0.55 : 0;
 }
 
 export function tintDest(th: Theater, id: BodyId, seed: number) {

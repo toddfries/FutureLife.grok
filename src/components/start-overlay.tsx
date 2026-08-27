@@ -59,8 +59,8 @@ export function StartOverlay() {
         <p className="mt-3 max-w-prose text-sm leading-normal text-muted">
           A spherical gulf world. Fly a compressed-air roadster, then board the
           Superheavy stack at Starbase Louisiana and ride a Starship to the
-          eight planets and the Moon. After stage sep a tanker docks for a
-          five-second propellant fill, then you burn out. Approach takes
+          eight planets and the Moon. After stage sep a tanker Starship pulls
+          alongside for a five-second propellant fill, then you burn out. Approach takes
           twenty seconds — a spark growing to atmosphere. Remote towers get a
           pad-clear so you never land on a stacked ship. Time compresses so a
           90-day Mars trip is a short watch. Guests are numbered in join
