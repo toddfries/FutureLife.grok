@@ -98,7 +98,7 @@ export class Engine {
   yawRate = 0;
   pitchRate = 0;
   rollRate = 0;
-  followDist = 18;
+  followDist = 11;
   brakingT = 0;
   detail = 0;
 
@@ -300,7 +300,7 @@ export class Engine {
     this.scene.add(this.ripples.group);
 
     this.placeSpawn();
-    this.camera.position.copy(this.pos).add(new THREE.Vector3(0, 6, 18));
+    this.camera.position.copy(this.pos).add(new THREE.Vector3(0, 4, 11));
 
     this.unbind = this.input.bind(window);
     this.resize();
@@ -335,8 +335,8 @@ export class Engine {
     this.pos.set(p.x, p.y, p.z);
     this.yaw = p.yaw;
     this.pitch = p.pitch;
-    this.followDist = 18;
-    this.camera.position.copy(this.pos).add(new THREE.Vector3(0, 6, 18));
+    this.followDist = 11;
+    this.camera.position.copy(this.pos).add(new THREE.Vector3(0, 4, 11));
     this.hideLotStall(this.spawnIdx);
   }
 
@@ -537,7 +537,7 @@ export class Engine {
     this.pos.set(p.x, p.y, p.z);
     this.yaw = p.yaw;
     this.pitch = p.pitch;
-    this.followDist = 18;
+    this.followDist = 11;
     this.hideLotStall(this.spawnIdx);
   }
 
@@ -980,12 +980,12 @@ export class Engine {
 
     // Chase cam follows yaw, but only a little pitch — otherwise a nose-down
     // amphitheater stall aims the camera at the sign and loses the car/plate.
-    _euler.set(this.pitch * 0.28, this.yaw, 0, "YXZ");
+    _euler.set(this.pitch * 0.1, this.yaw, 0, "YXZ");
     _fwd.set(0, 0, -1).applyEuler(_euler);
     _tmp.copy(this.pos).addScaledVector(_fwd, -this.followDist);
-    _tmp.y += this.followDist * 0.32 + 2.2;
+    _tmp.y += this.followDist * 0.14 + 1.05;
     this.camera.position.lerp(_tmp, 1 - Math.exp(-dt * 7));
-    _look.copy(this.pos).addScaledVector(_fwd, 2.5);
+    _look.copy(this.pos);
     _look.y += 0.55;
     this.camera.lookAt(_look);
 

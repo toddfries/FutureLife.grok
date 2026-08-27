@@ -141,6 +141,8 @@ export class InputMap {
   setKeys(codes: string[]) {
     this.injected = new Set(codes);
     this.injectedShift = codes.includes("ShiftLeft") || codes.includes("ShiftRight");
+    this.zoomIn = codes.includes("KeyZ") && !this.injectedShift;
+    this.zoomOut = codes.includes("KeyZ") && this.injectedShift;
   }
 
   setSteer(v: number) {

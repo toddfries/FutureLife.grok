@@ -193,102 +193,227 @@ export type Roadster = {
   nameplate: THREE.Group;
 };
 
-/** Compressed-air Tesla-like roadster — tiny nozzles on every axis. */
+/** Compressed-air Tesla Roadster — 2008 Elise-based silhouette, 6DOF nozzles. */
 export function makeRoadster(): Roadster {
   const g = new THREE.Group();
   const body = new THREE.MeshPhongMaterial({
     color: 0xb42318,
-    shininess: 110,
-    specular: 0xff8a7a,
+    shininess: 130,
+    specular: 0xff9a8a,
   });
   const dark = new THREE.MeshPhongMaterial({
-    color: 0x1a1c1e,
-    shininess: 40,
-    specular: 0x444448,
+    color: 0x141518,
+    shininess: 50,
+    specular: 0x333338,
   });
   const silver = new THREE.MeshPhongMaterial({
-    color: 0xc5c8cc,
-    shininess: 90,
-    specular: 0xe8eaee,
+    color: 0xc8ccd0,
+    shininess: 110,
+    specular: 0xf0f2f4,
   });
   const glass = new THREE.MeshPhongMaterial({
-    color: 0x8ec8d4,
+    color: 0x6aa0b4,
     transparent: true,
-    opacity: 0.52,
-    shininess: 160,
+    opacity: 0.38,
+    shininess: 180,
     specular: 0xffffff,
+    side: THREE.DoubleSide,
   });
   const glow = new THREE.MeshPhongMaterial({
-    color: 0xe8f6ff,
-    emissive: 0x6ab0d4,
+    color: 0xf2f7ff,
+    emissive: 0x8ec8e8,
     emissiveIntensity: 0.95,
     shininess: 20,
   });
   const tail = new THREE.MeshPhongMaterial({
-    color: 0xff3a2a,
-    emissive: 0xaa1810,
-    emissiveIntensity: 0.7,
+    color: 0xff2a22,
+    emissive: 0xb01410,
+    emissiveIntensity: 0.75,
+  });
+  const rubber = new THREE.MeshPhongMaterial({
+    color: 0x1a1a1c,
+    shininess: 18,
+    specular: 0x222224,
+  });
+  const cabin = new THREE.MeshPhongMaterial({
+    color: 0x1c1614,
+    shininess: 25,
   });
 
-  // Hull: long nose, low cabin — Roadster silhouette. Forward is −Z.
-  const hull = new THREE.Mesh(new THREE.BoxGeometry(1.42, 0.42, 3.15), body);
-  hull.position.y = 0.38;
-  hull.userData.hull = true;
-  g.add(hull);
-  const nose = new THREE.Mesh(new THREE.BoxGeometry(1.28, 0.3, 0.85), body);
-  nose.position.set(0, 0.3, -1.82);
-  nose.userData.hull = true;
-  g.add(nose);
-  const splitter = new THREE.Mesh(new THREE.BoxGeometry(1.36, 0.06, 0.4), dark);
-  splitter.position.set(0, 0.14, -2.12);
-  g.add(splitter);
-  const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.18, 0.38, 1.15), glass);
-  cabin.position.set(0, 0.68, -0.12);
-  g.add(cabin);
-  const roof = new THREE.Mesh(new THREE.BoxGeometry(1.12, 0.05, 1.05), body);
-  roof.position.set(0, 0.88, -0.08);
-  roof.userData.hull = true;
-  g.add(roof);
-  const belt = new THREE.Mesh(new THREE.BoxGeometry(1.46, 0.05, 2.9), silver);
-  belt.position.y = 0.58;
-  g.add(belt);
-  const spoiler = new THREE.Mesh(new THREE.BoxGeometry(1.28, 0.06, 0.32), dark);
-  spoiler.position.set(0, 0.62, 1.52);
-  g.add(spoiler);
-  const diffuser = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.16, 0.28), dark);
-  diffuser.position.set(0, 0.18, 1.62);
-  g.add(diffuser);
+  const hull = (m: THREE.Mesh) => {
+    m.userData.hull = true;
+    m.castShadow = true;
+    return m;
+  };
 
-  for (const x of [-0.62, 0.62]) {
-    for (const z of [-1.05, 1.12]) {
-      const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.22, 14), dark);
-      wheel.rotation.z = Math.PI / 2;
-      wheel.position.set(x, 0.28, z);
-      g.add(wheel);
-      const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.24, 10), silver);
-      rim.rotation.z = Math.PI / 2;
-      rim.position.set(x, 0.28, z);
-      g.add(rim);
+  const tub = hull(new THREE.Mesh(new THREE.BoxGeometry(1.18, 0.34, 2.55), body));
+  tub.position.set(0, 0.4, 0.05);
+  g.add(tub);
+
+  const rocker = hull(new THREE.Mesh(new THREE.BoxGeometry(1.36, 0.12, 2.4), body));
+  rocker.position.set(0, 0.24, 0.02);
+  g.add(rocker);
+
+  const hood = hull(new THREE.Mesh(new THREE.BoxGeometry(1.12, 0.16, 1.22), body));
+  hood.position.set(0, 0.52, -1.12);
+  g.add(hood);
+  const nose = hull(new THREE.Mesh(new THREE.SphereGeometry(0.62, 14, 10), body));
+  nose.scale.set(1.02, 0.32, 0.72);
+  nose.position.set(0, 0.44, -1.72);
+  g.add(nose);
+
+  const bumper = hull(new THREE.Mesh(new THREE.BoxGeometry(1.28, 0.16, 0.28), body));
+  bumper.position.set(0, 0.22, -2.08);
+  g.add(bumper);
+  const splitter = new THREE.Mesh(new THREE.BoxGeometry(1.22, 0.04, 0.22), dark);
+  splitter.position.set(0, 0.13, -2.18);
+  g.add(splitter);
+  const mouth = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.05, 0.08), dark);
+  mouth.position.set(0, 0.18, -2.24);
+  g.add(mouth);
+
+  const deck = hull(new THREE.Mesh(new THREE.BoxGeometry(1.14, 0.18, 0.92), body));
+  deck.position.set(0, 0.5, 1.18);
+  g.add(deck);
+  const kamm = hull(new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.28, 0.22), body));
+  kamm.position.set(0, 0.4, 1.62);
+  g.add(kamm);
+  const haunch = hull(new THREE.Mesh(new THREE.SphereGeometry(0.58, 12, 8), body));
+  haunch.scale.set(1.05, 0.34, 0.58);
+  haunch.position.set(0, 0.46, 1.28);
+  g.add(haunch);
+  const lip = new THREE.Mesh(new THREE.BoxGeometry(1.08, 0.04, 0.16), dark);
+  lip.position.set(0, 0.58, 1.58);
+  g.add(lip);
+  const diffuser = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.12, 0.26), dark);
+  diffuser.position.set(0, 0.16, 1.7);
+  g.add(diffuser);
+  for (const x of [-0.28, 0, 0.28]) {
+    const strake = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.1, 0.22), dark);
+    strake.position.set(x, 0.16, 1.7);
+    g.add(strake);
+  }
+
+  for (const x of [-0.68, 0.68]) {
+    const door = hull(new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.28, 0.95), body));
+    door.position.set(x, 0.44, -0.08);
+    g.add(door);
+    const scoop = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.14, 0.38), dark);
+    scoop.position.set(x, 0.38, 0.58);
+    g.add(scoop);
+    const mirror = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.07, 0.08), dark);
+    mirror.position.set(x * 1.08, 0.62, -0.52);
+    g.add(mirror);
+    const glassBit = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.05, 0.06), silver);
+    glassBit.position.set(x * 1.14, 0.62, -0.52);
+    g.add(glassBit);
+  }
+
+  for (const [z, len] of [
+    [-1.12, 0.72],
+    [1.02, 0.78],
+  ] as const) {
+    for (const x of [-0.68, 0.68]) {
+      const fender = hull(new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.14, len), body));
+      fender.position.set(x, 0.4, z);
+      g.add(fender);
     }
   }
-  const lampL = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 6), glow);
-  lampL.position.set(-0.42, 0.34, -2.22);
-  g.add(lampL);
-  const lampR = lampL.clone();
-  lampR.position.x = 0.42;
-  g.add(lampR);
-  const tailL = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.08, 0.06), tail);
-  tailL.position.set(-0.48, 0.42, 1.6);
-  g.add(tailL);
-  const tailR = tailL.clone();
-  tailR.position.x = 0.48;
-  g.add(tailR);
+
+  const screen = new THREE.Mesh(new THREE.PlaneGeometry(1.02, 0.46), glass);
+  screen.position.set(0, 0.78, -0.52);
+  screen.rotation.x = 0.58;
+  g.add(screen);
+  for (const x of [-0.52, 0.52]) {
+    const pillar = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.42, 0.05), dark);
+    pillar.position.set(x, 0.72, -0.48);
+    pillar.rotation.x = 0.5;
+    g.add(pillar);
+  }
+  const header = hull(new THREE.Mesh(new THREE.BoxGeometry(1.02, 0.04, 0.08), body));
+  header.position.set(0, 0.98, -0.32);
+  g.add(header);
+
+  for (const x of [-0.28, 0.28]) {
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.42, 8), dark);
+    post.position.set(x, 0.78, 0.55);
+    g.add(post);
+  }
+  const hoop = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.03, 6, 12, Math.PI), dark);
+  hoop.rotation.z = Math.PI / 2;
+  hoop.position.set(0, 0.98, 0.55);
+  g.add(hoop);
+
+  const dash = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.12, 0.28), cabin);
+  dash.position.set(0, 0.52, -0.42);
+  g.add(dash);
+  for (const x of [-0.22, 0.22]) {
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.08, 0.42), cabin);
+    seat.position.set(x, 0.42, 0.08);
+    g.add(seat);
+    const back = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.32, 0.08), cabin);
+    back.position.set(x, 0.58, 0.28);
+    back.rotation.x = -0.18;
+    g.add(back);
+  }
+  const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.09, 0.015, 6, 14), dark);
+  wheel.position.set(-0.22, 0.58, -0.28);
+  wheel.rotation.x = 1.15;
+  g.add(wheel);
+
+  const tBar = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.015, 0.04), silver);
+  tBar.position.set(0, 0.61, -1.38);
+  g.add(tBar);
+  const tStem = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.015, 0.12), silver);
+  tStem.position.set(0, 0.61, -1.32);
+  g.add(tStem);
+
+  const addWheel = (x: number, z: number, r: number) => {
+    const grp = new THREE.Group();
+    const tire = new THREE.Mesh(new THREE.TorusGeometry(r, 0.075, 8, 18), rubber);
+    tire.rotation.y = Math.PI / 2;
+    const disc = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.62, r * 0.62, 0.07, 16), silver);
+    disc.rotation.z = Math.PI / 2;
+    const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.1, 10), dark);
+    hub.rotation.z = Math.PI / 2;
+    grp.add(tire, disc, hub);
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2;
+      const spoke = new THREE.Mesh(new THREE.BoxGeometry(0.035, r * 0.95, 0.03), silver);
+      spoke.rotation.z = Math.PI / 2;
+      spoke.rotation.x = a;
+      grp.add(spoke);
+    }
+    grp.position.set(x, r + 0.02, z);
+    g.add(grp);
+  };
+  addWheel(-0.72, -1.12, 0.28);
+  addWheel(0.72, -1.12, 0.28);
+  addWheel(-0.72, 1.04, 0.3);
+  addWheel(0.72, 1.04, 0.3);
+
+  for (const x of [-0.5, 0.5]) {
+    const bucket = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), dark);
+    bucket.scale.set(1.35, 0.62, 0.42);
+    bucket.position.set(x, 0.38, -2.02);
+    g.add(bucket);
+    const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.075, 10, 8), glow);
+    lamp.scale.set(1.45, 0.62, 0.4);
+    lamp.position.set(x, 0.38, -2.08);
+    g.add(lamp);
+  }
+  for (const x of [-0.42, 0.42]) {
+    const tl = new THREE.Mesh(new THREE.SphereGeometry(0.065, 10, 8), tail);
+    tl.scale.set(1.15, 0.7, 0.35);
+    tl.position.set(x, 0.46, 1.74);
+    g.add(tl);
+  }
 
   const mkNoz = (x: number, y: number, z: number, ax: "x" | "y" | "z") => {
     const n = new THREE.Object3D();
     n.position.set(x, y, z);
-    const vis = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.085, 0.16, 8), silver);
-    const core = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.1, 6), glow);
+    const vis = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.042, 0.09, 8), silver);
+    const core = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.06, 6), glow);
     if (ax === "z") {
       vis.rotation.x = Math.PI / 2;
       core.rotation.x = Math.PI / 2;
@@ -296,19 +421,18 @@ export function makeRoadster(): Roadster {
       vis.rotation.z = Math.PI / 2;
       core.rotation.z = Math.PI / 2;
     }
-    n.add(vis);
-    n.add(core);
+    n.add(vis, core);
     g.add(n);
     return n;
   };
 
   const nozzles = {
-    fwd: mkNoz(0, 0.26, 1.72, "z"),
-    back: mkNoz(0, 0.26, -2.28, "z"),
-    left: mkNoz(-0.78, 0.34, 0.15, "x"),
-    right: mkNoz(0.78, 0.34, 0.15, "x"),
-    up: mkNoz(0, 0.92, 0.4, "y"),
-    down: mkNoz(0, 0.1, 0.25, "y"),
+    fwd: mkNoz(0, 0.16, 1.82, "z"),
+    back: mkNoz(0, 0.16, -2.26, "z"),
+    left: mkNoz(-0.74, 0.22, 0.1, "x"),
+    right: mkNoz(0.74, 0.22, 0.1, "x"),
+    up: mkNoz(0, 0.2, 1.35, "y"),
+    down: mkNoz(0, 0.08, 0.2, "y"),
   };
 
   g.scale.setScalar(1.85);
@@ -377,25 +501,23 @@ export function makeNameplate(text: string): THREE.Group {
     shininess: 90,
     specular: 0xe8eaee,
   });
-  const geo = new THREE.PlaneGeometry(1.72, 0.52);
-  const frameGeo = new THREE.PlaneGeometry(1.84, 0.62);
+  const geo = new THREE.PlaneGeometry(0.43, 0.13);
+  const frameGeo = new THREE.PlaneGeometry(0.46, 0.155);
 
   const rearFrame = new THREE.Mesh(frameGeo, silver);
-  rearFrame.position.set(0, 0.82, 1.42);
-  rearFrame.rotation.x = -0.42;
+  rearFrame.position.set(0, 0.4, 1.72);
   g.add(rearFrame);
   const rear = new THREE.Mesh(geo, mat);
-  rear.position.set(0, 0.82, 1.45);
-  rear.rotation.x = -0.42;
+  rear.position.set(0, 0.4, 1.735);
   rear.userData.plate = true;
   g.add(rear);
 
   const frontFrame = new THREE.Mesh(frameGeo, silver);
-  frontFrame.position.set(0, 0.38, -2.24);
+  frontFrame.position.set(0, 0.24, -2.22);
   frontFrame.rotation.y = Math.PI;
   g.add(frontFrame);
   const front = new THREE.Mesh(geo, mat);
-  front.position.set(0, 0.38, -2.27);
+  front.position.set(0, 0.24, -2.235);
   front.rotation.y = Math.PI;
   front.userData.plate = true;
   g.add(front);
