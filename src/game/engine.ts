@@ -149,6 +149,7 @@ export class Engine {
   private currentBody: BodyId = "earth";
   private simOffset = 0;
   private chunksVisible = true;
+  private spaceOn = false;
 
   private treeTrunk: THREE.InstancedMesh;
   private treeCanopy: THREE.InstancedMesh;
@@ -474,6 +475,13 @@ export class Engine {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, t > 0.4 ? 1.5 : 1));
     this.renderer.shadowMap.enabled = q.shadows;
     this.lights.sun.castShadow = q.shadows;
+    if (this.spaceOn) {
+      if (voxelChanged) {
+        this.world = new World(this.seed, q.voxelSize);
+        this.clearChunks();
+      }
+      return;
+    }
     if (voxelChanged) {
       this.world = new World(this.seed, q.voxelSize);
       this.clearChunks();
@@ -718,7 +726,14 @@ export class Engine {
     this.treeCanopy.count = ti;
     this.ferns.count = fi;
     this.crystals.count = ci;
-    this.kelp.count = this.chunksVisible ? ki : 0;
+    this.kelp.count = ki;
+    if (!this.chunksVisible) {
+      this.treeTrunk.count = 0;
+      this.treeCanopy.count = 0;
+      this.ferns.count = 0;
+      this.crystals.count = 0;
+      this.kelp.count = 0;
+    }
     this.treeTrunk.instanceMatrix.needsUpdate = true;
     this.treeCanopy.instanceMatrix.needsUpdate = true;
     this.ferns.instanceMatrix.needsUpdate = true;
@@ -752,9 +767,11 @@ export class Engine {
       this.audio.sync(this.mission.phase, this.mission.fueling);
     }
 
-    this.markStream();
-    this.buildNext();
-    if (this.queue.length > 8) this.buildNext();
+    if (!this.spaceOn) {
+      this.markStream();
+      this.buildNext();
+      if (this.queue.length > 8) this.buildNext();
+    }
     if (this.instancesDirty) this.rebuildInstances();
 
     if (!this.mission.inCinematic() || this.mission.phase === "eva" || this.mission.phase === "board") {
@@ -1062,6 +1079,7 @@ export class Engine {
 
   private setSpace(on: boolean) {
     const body = BODIES[this.currentBody];
+    this.spaceOn = on;
     this.planet.mesh.visible = !on;
     this.planet.water.visible = !on;
     this.planet.atmo.visible = !on;
@@ -1074,7 +1092,17 @@ export class Engine {
       if (ch.solid) ch.solid.visible = this.chunksVisible;
       if (ch.water) ch.water.visible = this.chunksVisible;
     }
+    for (const g of this.giants.values()) g.visible = this.chunksVisible;
+    for (const f of this.falls.values()) f.visible = this.chunksVisible;
+    this.treeTrunk.visible = this.chunksVisible;
+    this.treeCanopy.visible = this.chunksVisible;
+    this.ferns.visible = this.chunksVisible;
+    this.crystals.visible = this.chunksVisible;
+    this.kelp.visible = this.chunksVisible;
+    this.clouds.visible = this.chunksVisible && body.atmo;
+    this.instancesDirty = true;
     if (on) {
+      this.queue.length = 0;
       this.scene.background = new THREE.Color(0x02050a);
       const fog = this.scene.fog;
       if (fog instanceof THREE.Fog) {
@@ -1095,8 +1123,9 @@ export class Engine {
       }
       this.camera.far = Math.max(4200, PLANET_R * 5);
       this.camera.updateProjectionMatrix();
+      if (this.chunks.size === 0) this.primeChunks();
+      else this.markStream();
     }
-    this.instancesDirty = true;
   }
 
   private arrive(id: BodyId) {

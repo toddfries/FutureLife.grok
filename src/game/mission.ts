@@ -58,6 +58,7 @@ export type MissionSnap = {
   fueling: boolean;
   callout: string;
   approachLeft: number;
+  cruiseLeft: number;
 };
 
 export type MissionHooks = {
@@ -137,6 +138,7 @@ export class Mission {
       fueling: this.fueling,
       callout: this.callout,
       approachLeft: this.phase === "approach" ? Math.max(0, APPROACH_SEC - this.t) : 0,
+      cruiseLeft: this.phase === "cruise" ? Math.max(0, this.cruiseDur - this.cruiseT) : 0,
     };
   }
 

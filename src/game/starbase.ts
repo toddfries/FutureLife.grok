@@ -81,7 +81,7 @@ export function makeMats(): Mats {
   };
 }
 
-/** Stainless Starship stack (booster + ship + flaps + grid fins). */
+/** Stainless Starship stack (v3: two aft flaps, three Super Heavy grid fins). */
 export function makeStarship(mats: Mats, stacked: boolean): THREE.Group {
   const g = new THREE.Group();
   const s = mats.stainless;
@@ -95,44 +95,134 @@ export function makeStarship(mats: Mats, stacked: boolean): THREE.Group {
     const skirt = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.62, 1.1, 12), mats.steelDark);
     skirt.position.y = 0.55;
     g.add(skirt);
-    for (let i = 0; i < 4; i++) {
-      const a = (i / 4) * Math.PI * 2 + 0.4;
-      const fin = box(mats.steel, 1.8, 0.12, 1.1, Math.cos(a) * 1.45, 14.2, Math.sin(a) * 1.45);
-      fin.lookAt(0, 14.2, 0);
-      g.add(fin);
-    }
+    const ring = new THREE.Mesh(new THREE.CylinderGeometry(1.32, 1.28, 0.55, 14), mats.steelDark);
+    ring.position.y = hBoost - 0.2;
+    g.add(ring);
+    addGridFins(g, mats, 14.2, 1.52);
+    addBoosterRaptors(g, mats, 0);
   }
-  const shipH = 12.6;
+  const shipH = 13.4;
   const ship = new THREE.Mesh(new THREE.CylinderGeometry(1.18, 1.28, shipH, 18), s);
   ship.position.y = hBoost + shipH / 2;
   ship.castShadow = true;
   g.add(ship);
-  const nose = new THREE.Mesh(new THREE.ConeGeometry(1.18, 5.4, 18), s);
-  nose.position.y = hBoost + shipH + 2.7;
+  const nose = new THREE.Mesh(new THREE.ConeGeometry(1.18, 5.8, 18), s);
+  nose.position.y = hBoost + shipH + 2.9;
   nose.castShadow = true;
   g.add(nose);
-  const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.8, 8), b);
-  cap.position.y = hBoost + shipH + 5.5;
+  const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, 0.7, 8), b);
+  cap.position.y = hBoost + shipH + 5.95;
   g.add(cap);
-  const flapY = hBoost + 8.4;
-  for (const sx of [-1, 1]) {
-    const flap = box(s, 0.12, 4.8, 2.4, sx * 1.35, flapY, 0.15);
-    flap.rotation.z = sx * 0.18;
-    g.add(flap);
-  }
-  for (const sx of [-1, 1]) {
-    const flap = box(s, 0.12, 3.2, 1.6, sx * 1.32, hBoost + 3.2, 0.1);
-    flap.rotation.z = sx * 0.22;
-    g.add(flap);
-  }
+  addAftFlaps(g, s, hBoost);
   const heat = new THREE.Mesh(
-    new THREE.CylinderGeometry(1.2, 1.22, shipH * 0.7, 18, 1, true),
+    new THREE.CylinderGeometry(1.2, 1.22, shipH * 0.72, 18, 1, true),
     mats.black,
   );
-  heat.position.set(0.04, hBoost + shipH * 0.45, 0);
+  heat.position.set(0.04, hBoost + shipH * 0.42, 0);
   heat.scale.x = 0.92;
   g.add(heat);
+  addShipRaptors(g, mats, hBoost);
   return g;
+}
+
+/** Two leeward aft flaps — Starship v3 dropped the forward pair. */
+export function addAftFlaps(g: THREE.Group, mat: THREE.Material, y0: number) {
+  for (const sx of [-1, 1]) {
+    const flap = box(mat, 0.1, 5.4, 2.7, sx * 1.38, y0 + 3.5, 0.42);
+    flap.rotation.z = sx * 0.2;
+    flap.rotation.x = 0.1;
+    g.add(flap);
+  }
+}
+
+/**
+ * Super Heavy v3: three grid fins, not four.
+ * Catch pair (chopsticks) sit close together; windward fin is opposite,
+ * taller/swept, and canted another way.
+ */
+export function addGridFins(g: THREE.Group, mats: Mats, y: number, radius: number) {
+  const specs = [
+    { az: -0.58, w: 2.25, h: 1.65, tilt: 0.14, roll: -0.08 },
+    { az: 0.64, w: 2.05, h: 1.9, tilt: -0.1, roll: 0.12 },
+    { az: Math.PI - 0.08, w: 1.55, h: 2.45, tilt: 0.28, roll: 0.18 },
+  ];
+  const mat = new THREE.MeshPhongMaterial({
+    map: gridFinTex(),
+    color: 0xc8ced2,
+    shininess: 70,
+    specular: 0xe8ecee,
+  });
+  for (const spec of specs) {
+    const fin = new THREE.Mesh(new THREE.BoxGeometry(spec.w, spec.h, 0.12), mat);
+    fin.position.set(Math.cos(spec.az) * radius, y, Math.sin(spec.az) * radius);
+    fin.lookAt(0, y, 0);
+    fin.rotateX(spec.tilt);
+    fin.rotateZ(spec.roll);
+    fin.castShadow = true;
+    g.add(fin);
+  }
+}
+
+function addBoosterRaptors(g: THREE.Group, mats: Mats, y: number) {
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2;
+    const bell = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.1, 0.32, 6), mats.steelDark);
+    bell.position.set(Math.cos(a) * 1.05, y - 0.05, Math.sin(a) * 1.05);
+    g.add(bell);
+  }
+  for (let i = 0; i < 7; i++) {
+    const a = (i / 7) * Math.PI * 2 + 0.22;
+    const bell = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.09, 0.3, 6), mats.steelDark);
+    bell.position.set(Math.cos(a) * 0.52, y - 0.05, Math.sin(a) * 0.52);
+    g.add(bell);
+  }
+}
+
+function addShipRaptors(g: THREE.Group, mats: Mats, y: number) {
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * Math.PI * 2;
+    const vac = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.2, 0.85, 10), mats.steelDark);
+    vac.position.set(Math.cos(a) * 0.7, y - 0.32, Math.sin(a) * 0.7);
+    g.add(vac);
+  }
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * Math.PI * 2 + 0.55;
+    const sl = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.13, 0.4, 8), mats.steelDark);
+    sl.position.set(Math.cos(a) * 0.26, y - 0.12, Math.sin(a) * 0.26);
+    g.add(sl);
+  }
+}
+
+let _finTex: THREE.CanvasTexture | null = null;
+function gridFinTex(): THREE.CanvasTexture {
+  if (_finTex) return _finTex;
+  const c = document.createElement("canvas");
+  c.width = 128;
+  c.height = 128;
+  const ctx = c.getContext("2d")!;
+  ctx.fillStyle = "#2c3236";
+  ctx.fillRect(0, 0, 128, 128);
+  ctx.strokeStyle = "#d0d6da";
+  ctx.lineWidth = 5;
+  for (let i = 8; i < 128; i += 16) {
+    ctx.beginPath();
+    ctx.moveTo(i, 4);
+    ctx.lineTo(i, 124);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(4, i);
+    ctx.lineTo(124, i);
+    ctx.stroke();
+  }
+  ctx.strokeStyle = "#9aa2a8";
+  ctx.lineWidth = 8;
+  ctx.strokeRect(4, 4, 120, 120);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+  tex.needsUpdate = true;
+  _finTex = tex;
+  return tex;
 }
 
 /** Mechazilla-style catch tower with chopsticks, carriage, QD arm. */

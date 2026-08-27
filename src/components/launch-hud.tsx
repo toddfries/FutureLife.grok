@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Map, Rocket, UserRound, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TripMap } from "@/components/trip-map";
@@ -14,6 +14,13 @@ export function LaunchHud() {
   const body = useFlight((s) => s.currentBody);
   const [muted, setMuted] = useState(false);
 
+  useEffect(() => {
+    if (!mission) return;
+    if (mission.phase === "approach" || (mission.phase === "cruise" && mission.cruiseLeft <= 20)) {
+      setMapOpen(false);
+    }
+  }, [mission?.phase, mission?.cruiseLeft, setMapOpen]);
+
   if (!playing || !mission) return null;
 
   const showPicker = mission.padMenu || mission.phase === "orbit";
@@ -22,7 +29,8 @@ export function LaunchHud() {
   const showTrip = mission.phase === "cruise";
   const showFuel = mission.phase === "fuel" || mission.fueling;
   const showApproach = mission.phase === "approach";
-  const showMap = mapOpen && (showTrip || showApproach);
+  const cruiseLeft = mission.cruiseLeft;
+  const showMap = mapOpen && showTrip && cruiseLeft > 20;
   const gas = BODIES[body].gas;
 
   return (
@@ -72,16 +80,6 @@ export function LaunchHud() {
           <p className="mt-1 text-[11px] text-subtle">
             Tiny disk to interface — twenty seconds of real closing.
           </p>
-          <Button
-            variant="secondary"
-            size="default"
-            className="pointer-events-auto mt-2 h-11 px-3 text-xs"
-            onClick={() => setMapOpen(!mapOpen)}
-            aria-label="Overview map"
-          >
-            <Map className="size-4" />
-            {mapOpen ? "Hide path" : "Watch journey"}
-          </Button>
         </div>
       ) : null}
 
@@ -94,16 +92,20 @@ export function LaunchHud() {
             {mission.tripLeft.toFixed(1)} days remaining
           </p>
           <p className="mt-1 text-[11px] text-subtle">Turn, tilt, zoom. Camera resets before approach.</p>
-          <Button
-            variant="secondary"
-            size="default"
-            className="mt-2 h-11 px-3 text-xs"
-            onClick={() => setMapOpen(!mapOpen)}
-            aria-label="Overview map"
-          >
-            <Map className="size-4" />
-            {mapOpen ? "Hide path" : "Watch journey"}
-          </Button>
+          {cruiseLeft > 20 ? (
+            <Button
+              variant="secondary"
+              size="default"
+              className="mt-2 h-11 px-3 text-xs"
+              onClick={() => setMapOpen(!mapOpen)}
+              aria-label="Overview map"
+            >
+              <Map className="size-4" />
+              {mapOpen ? "Hide path" : "Watch journey"}
+            </Button>
+          ) : (
+            <p className="mt-2 text-[11px] text-subtle">Map stowed · planet approach</p>
+          )}
         </div>
       ) : null}
 

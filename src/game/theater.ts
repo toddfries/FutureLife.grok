@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { BODIES, type BodyId } from "./bodies";
 import { loadNasaMap, applyNasaMap } from "./nasa-tex";
-import { STARBASE_ORIGIN, makeMats, makeStarship } from "./starbase";
+import { STARBASE_ORIGIN, addGridFins, makeMats, makeStarship } from "./starbase";
 
 /** Center-right pad of complex 3 — the live stack the player boards. */
 export const PAD = {
@@ -36,12 +36,21 @@ function makeBooster(mats: ReturnType<typeof makeMats>): THREE.Group {
   const skirt = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.62, 1.1, 12), mats.steelDark);
   skirt.position.y = 0.55;
   g.add(skirt);
-  for (let i = 0; i < 4; i++) {
-    const a = (i / 4) * Math.PI * 2 + 0.4;
-    const fin = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.12, 1.1), mats.steel);
-    fin.position.set(Math.cos(a) * 1.45, 14.2, Math.sin(a) * 1.45);
-    fin.lookAt(0, 14.2, 0);
-    g.add(fin);
+  const ring = new THREE.Mesh(new THREE.CylinderGeometry(1.32, 1.28, 0.55, 14), mats.steelDark);
+  ring.position.y = h - 0.2;
+  g.add(ring);
+  addGridFins(g, mats, 14.2, 1.52);
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2;
+    const bell = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.1, 0.32, 6), mats.steelDark);
+    bell.position.set(Math.cos(a) * 1.05, -0.05, Math.sin(a) * 1.05);
+    g.add(bell);
+  }
+  for (let i = 0; i < 7; i++) {
+    const a = (i / 7) * Math.PI * 2 + 0.22;
+    const bell = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.09, 0.3, 6), mats.steelDark);
+    bell.position.set(Math.cos(a) * 0.52, -0.05, Math.sin(a) * 0.52);
+    g.add(bell);
   }
   return g;
 }
