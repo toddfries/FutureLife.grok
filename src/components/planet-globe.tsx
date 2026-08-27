@@ -4,11 +4,14 @@ import { Button } from "@/components/ui/button";
 import { engineHandle } from "@/game/handle";
 import { makeEarthTexture, worldToLatLon } from "@/game/planet";
 import { useFlight } from "@/game/store";
+import { BODIES } from "@/game/bodies";
 
 export function PlanetGlobe() {
   const playing = useFlight((s) => s.playing);
   const open = useFlight((s) => s.globeOpen);
   const setOpen = useFlight((s) => s.setGlobeOpen);
+  const seed = useFlight((s) => s.seed);
+  const body = useFlight((s) => s.currentBody);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const lastTap = useRef<{ id: string; t: number }>({ id: "", t: 0 });
 
@@ -22,7 +25,7 @@ export function PlanetGlobe() {
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 80);
     camera.position.set(0, 0.6, 4.6);
-    const tex = makeEarthTexture(512, 256);
+    const tex = makeEarthTexture(512, 256, seed || 1, body);
     const globe = new THREE.Mesh(
       new THREE.SphereGeometry(1.4, 48, 32),
       new THREE.MeshLambertMaterial({ map: tex }),
@@ -152,14 +155,14 @@ export function PlanetGlobe() {
       mats.player.dispose();
       mats.sight.dispose();
     };
-  }, [playing, open]);
+  }, [playing, open, seed, body]);
 
   if (!playing) return null;
 
   return (
     <div className="pointer-events-auto absolute right-3 bottom-3 z-10 w-[220px] rounded-xl border border-border bg-surface p-3 sm:bottom-5 sm:right-5">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-medium tracking-[0.12em] text-muted uppercase">Planet</p>
+        <p className="text-xs font-medium tracking-[0.12em] text-muted uppercase">{BODIES[body].name}</p>
         <Button
           variant="secondary"
           size="default"

@@ -1,5 +1,7 @@
 import * as THREE from "three";
+import { BODIES, BODY_LIST, skyDir, type BodyId } from "./bodies";
 import { WORLD_HEX } from "./palette";
+import { loadNasaMap, applyNasaMap } from "./nasa-tex";
 
 const SKY_VERT = /* glsl */ `
 varying vec3 vWorld;
@@ -56,7 +58,62 @@ export function addSky(scene: THREE.Scene) {
   moon.position.set(620, 340, -980);
   scene.add(moon);
 
-  return { mesh, uniforms, planet: moon };
+  const skyBodies = new THREE.Group();
+  const skyMeshes = new Map<BodyId, THREE.Mesh>();
+  for (const id of BODY_LIST) {
+    if (id === "moon") continue;
+    const b = BODIES[id];
+    const m = new THREE.Mesh(
+      new THREE.SphereGeometry(b.skyR, 16, 12),
+      new THREE.MeshLambertMaterial({ color: b.color, emissive: b.color, emissiveIntensity: 0.18 }),
+    );
+    if (id === "saturn") {
+      const ring = new THREE.Mesh(
+        new THREE.RingGeometry(b.skyR * 1.2, b.skyR * 2.1, 32),
+        new THREE.MeshBasicMaterial({
+          color: 0xd4c48a,
+          side: THREE.DoubleSide,
+          transparent: true,
+          opacity: 0.65,
+        }),
+      );
+      ring.rotation.x = 1.1;
+      m.add(ring);
+    }
+    skyBodies.add(m);
+    skyMeshes.set(id, m);
+    void loadNasaMap(id)
+      .then((tex) => applyNasaMap(m.material as THREE.MeshLambertMaterial, tex))
+      .catch(() => {
+        /* keep solid color */
+      });
+  }
+  scene.add(skyBodies);
+
+  void loadNasaMap("moon")
+    .then((tex) => applyNasaMap(moon.material as THREE.MeshLambertMaterial, tex))
+    .catch(() => {
+      /* keep grey */
+    });
+
+  return { mesh, uniforms, planet: moon, skyBodies, skyMeshes };
+}
+
+export function placeSkyBodies(
+  sky: { skyMeshes: Map<BodyId, THREE.Mesh>; planet: THREE.Mesh },
+  origin: THREE.Vector3,
+  current: BodyId,
+  hideId?: BodyId | null,
+) {
+  const R = 1600;
+  for (const [id, m] of sky.skyMeshes) {
+    const show = id !== current && id !== hideId;
+    m.visible = show;
+    if (!show) continue;
+    const d = skyDir(id);
+    m.position.set(origin.x + d.x * R, origin.y + d.y * R * 0.55 + 220, origin.z + d.z * R);
+  }
+  sky.planet.visible = current !== "moon" && hideId !== "moon";
 }
 
 export function addLights(scene: THREE.Scene, shadows: boolean) {

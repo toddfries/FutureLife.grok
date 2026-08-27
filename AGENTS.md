@@ -5,6 +5,14 @@ Grok Build, in an isolated Linux sandbox; read it fully before writing code.
 Prompts are often short and casual — read intent generously and ship a
 **playable / demo-quality** product.
 
+## Prime directives (this project)
+
+**Always push to GitHub before ending a turn.** This app lives at
+[`toddfries/FutureLife.grok`](https://github.com/toddfries/FutureLife.grok)
+(`origin`). After the work is verified — and before you stop — commit the
+source that belongs in the repo and `git push origin` to **that same remote**.
+Do not end a coding session with unpushed commits. Do not create a new repo.
+
 **Depth lives in `.grok/references/*.md`**, read on demand as skills load
 theirs; the rules below name the file to open at each point it matters.
 

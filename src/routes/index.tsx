@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Hud } from "@/components/hud";
+import { LaunchHud } from "@/components/launch-hud";
 import { PeerNet } from "@/components/peer-net";
 import { PlanetGlobe } from "@/components/planet-globe";
 import { StartOverlay } from "@/components/start-overlay";
@@ -15,6 +16,7 @@ function Home() {
       <WorldStage />
       <PeerNet />
       <Hud />
+      <LaunchHud />
       <PlanetGlobe />
       <TouchPad />
       <StartOverlay />

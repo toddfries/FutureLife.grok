@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Mountain, Pause } from "lucide-react";
+import { Clock, Mountain, Pause } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useFlight } from "@/game/store";
 import { GROK_PROVIDERS, signIn } from "@/lib/auth/client";
@@ -23,6 +23,11 @@ export function Hud() {
   const cpuPct = useFlight((s) => s.cpuPct);
   const callsign = useFlight((s) => s.callsign);
   const setHelpOpen = useFlight((s) => s.setHelpOpen);
+  const timeMode = useFlight((s) => s.timeMode);
+  const setTimeMode = useFlight((s) => s.setTimeMode);
+  const simOffset = useFlight((s) => s.simOffset);
+  const hullColor = useFlight((s) => s.hullColor);
+  const setHullColor = useFlight((s) => s.setHullColor);
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
@@ -48,7 +53,8 @@ export function Hud() {
 
   if (!playing) return null;
 
-  const tz = tzOffset(now);
+  const shown = timeMode === "sim" ? new Date(now.getTime() + simOffset) : now;
+  const tz = tzOffset(shown);
   const fpsLabel = fps > 0 ? `${Math.round(fps)} fps` : "— fps";
 
   return (
@@ -84,16 +90,51 @@ export function Hud() {
             <tbody>
               <tr>
                 <td className="pr-4 font-mono text-[11px] text-fg tabular-nums whitespace-nowrap">
-                  {localStamp(now)}
+                  {localStamp(shown)}
                 </td>
                 <td className="font-mono text-[11px] text-fg tabular-nums whitespace-nowrap">
-                  {stardateOf(now)}
+                  {stardateOf(shown)}
                 </td>
               </tr>
             </tbody>
           </table>
+          <div className="mt-2 flex items-center gap-2">
+            <button
+              type="button"
+              className="inline-flex size-11 items-center justify-center rounded-md border border-border bg-surface-2 text-fg"
+              aria-label={
+                timeMode === "real"
+                  ? "real life time — click for simulated realistic travel time"
+                  : "simulated realistic travel time — click for real life time"
+              }
+              title={
+                timeMode === "real"
+                  ? "real life time"
+                  : "simulated realistic travel time"
+              }
+              onClick={() => setTimeMode(timeMode === "real" ? "sim" : "real")}
+            >
+              <Clock className="size-3.5" />
+            </button>
+            <span className="font-mono text-[11px] tracking-[0.14em] text-muted uppercase">
+              {timeMode === "real" ? "RL" : "SIM"}
+            </span>
+          </div>
         </div>
         <div className="flex items-center gap-2">
+          <label className="inline-flex size-11 items-center justify-center overflow-hidden rounded-md border border-border bg-surface">
+            <span className="sr-only">Roadster color</span>
+            <input
+              type="color"
+              value={`#${hullColor.toString(16).padStart(6, "0")}`}
+              onChange={(e) => {
+                const n = Number.parseInt(e.target.value.slice(1), 16);
+                if (Number.isFinite(n)) setHullColor(n);
+              }}
+              className="size-11 cursor-pointer border-0 bg-transparent p-0"
+              aria-label="Roadster color"
+            />
+          </label>
           <div className="hidden sm:block">
             <SignedIn>
               <UserButton />

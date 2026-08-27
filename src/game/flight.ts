@@ -293,6 +293,9 @@ export type ControlsProbe = {
   getCallsign?: () => string;
   applySpawn?: (idx: number) => void;
   setCallsign?: (name: string) => void;
+  getMission?: () => { phase: string; fuel: number; callout: string };
+  skipTo?: (phase: string, dest?: string) => void;
+  beginGo?: (id: string) => void;
   setSteer: (v: number) => void;
   setKeys: (codes: string[]) => void;
 };

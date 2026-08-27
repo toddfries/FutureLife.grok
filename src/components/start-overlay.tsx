@@ -34,6 +34,7 @@ export function StartOverlay() {
   if (playing && !helpOpen) return null;
 
   const enter = () => {
+    engineHandle.current?.unlockAudio();
     setPlaying(true);
     setHelpOpen(false);
   };
@@ -56,12 +57,15 @@ export function StartOverlay() {
           FutureLife
         </h1>
         <p className="mt-3 max-w-prose text-sm leading-normal text-muted">
-          A spherical gulf world. The planet itself is a smooth mesh; nearby
-          isles stay voxels you can sharpen with World detail. You fly a
-          compressed-air roadster. Other pilots are blue on the planet card;
-          Starbase Louisiana and other sights are red. Double-tap a dot to
-          superspeed. Guests are numbered in join order; sign in with X to
-          stamp your @handle on the plates.
+          A spherical gulf world. Fly a compressed-air roadster, then board the
+          Superheavy stack at Starbase Louisiana and ride a Starship to the
+          eight planets and the Moon. After stage sep a tanker docks for a
+          five-second propellant fill, then you burn out. Approach takes
+          twenty seconds — a spark growing to atmosphere. Remote towers get a
+          pad-clear so you never land on a stacked ship. Time compresses so a
+          90-day Mars trip is a short watch. Guests are numbered in join
+          order; sign in with X to stamp your @handle on the plates. Paint the
+          hull — everyone sees it.
         </p>
 
         <div className="mt-4 flex flex-wrap items-center gap-3">

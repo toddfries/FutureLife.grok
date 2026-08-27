@@ -1,9 +1,9 @@
 import * as THREE from "three";
 import { createNoise2D } from "simplex-noise";
 import { BODIES, type Body, type BodyId } from "./bodies";
-import { WORLD_HEX } from "./palette";
 import { mulberry32 } from "./rng";
 import { landValue } from "./world";
+import { loadNasaMap, applyNasaMap } from "./nasa-tex";
 
 /** Playable tangent sits on the north pole: planet center is (0, −R, 0). */
 export const PLANET_R = 680;
@@ -193,18 +193,34 @@ export function addPlanet(scene: THREE.Scene, seed = 1, bodyId: BodyId = "earth"
   scene.add(atmo);
 
   const clouds = new THREE.Mesh(
-    new THREE.SphereGeometry(PLANET_R + 6, 48, 32),
+    new THREE.SphereGeometry(PLANET_R + 42, 48, 32),
     new THREE.MeshLambertMaterial({
       color: body.cloud || 0xffffff,
       transparent: true,
-      opacity: body.atmo ? 0.18 : 0,
+      opacity: body.atmo ? 0.08 : 0,
       depthWrite: false,
     }),
   );
   clouds.position.copy(mesh.position);
   scene.add(clouds);
 
-  return { mesh, water, atmo, clouds, tex, bodyId };
+  const result: {
+    mesh: THREE.Mesh;
+    water: THREE.Mesh;
+    atmo: THREE.Mesh;
+    clouds: THREE.Mesh;
+    tex: THREE.Texture;
+    bodyId: BodyId;
+  } = { mesh, water, atmo, clouds, tex, bodyId };
+  void loadNasaMap(bodyId)
+    .then((nasa) => {
+      applyNasaMap(mat, nasa);
+      result.tex = nasa;
+    })
+    .catch(() => {
+      /* keep procedural */
+    });
+  return result;
 }
 
 export function retintPlanet(
@@ -225,5 +241,13 @@ export function retintPlanet(
   (planet.atmo.material as THREE.MeshBasicMaterial).color.setHex(body.atmo ? body.fog : 0x111111);
   (planet.atmo.material as THREE.MeshBasicMaterial).opacity = body.atmo ? 0.11 : 0.02;
   (planet.clouds.material as THREE.MeshLambertMaterial).color.setHex(body.cloud || 0xffffff);
-  (planet.clouds.material as THREE.MeshLambertMaterial).opacity = body.atmo ? 0.18 : 0;
+  (planet.clouds.material as THREE.MeshLambertMaterial).opacity = body.atmo ? 0.08 : 0;
+  void loadNasaMap(bodyId)
+    .then((tex) => {
+      applyNasaMap(mat, tex);
+      planet.tex = tex;
+    })
+    .catch(() => {
+      /* keep procedural skin */
+    });
 }

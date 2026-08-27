@@ -23,12 +23,14 @@ export function WorldStage() {
       const now = useFlight.getState();
       if (now.spawnIdx >= 0) engine.applySpawn(now.spawnIdx);
       if (now.callsign) engine.setCallsign(now.callsign);
+      engine.setHullColor(now.hullColor);
       let prev = now;
       unsub = useFlight.subscribe((s) => {
         if (s.playing !== prev.playing) engine.setPlaying(s.playing);
         if (s.detail !== prev.detail) engine.setDetail(s.detail);
         if (s.spawnIdx >= 0 && prev.spawnIdx < 0) engine.applySpawn(s.spawnIdx);
         if (s.callsign && s.callsign !== prev.callsign) engine.setCallsign(s.callsign);
+        if (s.hullColor !== prev.hullColor) engine.setHullColor(s.hullColor);
         prev = s;
       });
     });
@@ -46,6 +48,7 @@ export function WorldStage() {
       ref={canvasRef}
       tabIndex={0}
       className="absolute inset-0 size-full touch-none"
+      data-theater="starship-v4"
       aria-label="FutureLife sky"
     />
   );

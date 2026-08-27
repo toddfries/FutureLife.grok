@@ -15,7 +15,7 @@ import { CHUNK, CHUNK_Y, World, chunkOrigin } from "./world";
 import { uhash, uhash3 } from "./rng";
 
 export type Placement = {
-  kind: "tree" | "fern" | "crystal" | "giant" | "fall";
+  kind: "tree" | "fern" | "crystal" | "giant" | "fall" | "kelp";
   x: number;
   y: number;
   z: number;
@@ -101,6 +101,8 @@ export function meshChunk(
         const i = x + z * sx + y * sx * sz;
         const b = data[i]!;
         if (b !== GRASS && b !== MOSS) continue;
+        const wy = origin.y + y * vs;
+        if (wy < 2.4) break;
         const h = uhash(cx * CHUNK + x, cz * CHUNK + z, world.seed + 91);
         if (h > quality.treeDensity * 0.45) break;
         const hgt = 2 + Math.floor(uhash(x, z, world.seed + 3) * 4);
@@ -279,9 +281,13 @@ function collectPlacements(
       for (let y = sy - 2; y > 0; y--) {
         const b = data[x + z * sx + y * sx * sz]!;
         if (b !== GRASS && b !== MOSS) continue;
+        const below = data[x + z * sx + (y - 1) * sx * sz]!;
+        const above = data[x + z * sx + (y + 1) * sx * sz]!;
+        if (below === AIR || above !== AIR) continue;
         const wx = origin.x + (x + 0.5) * vs;
         const wy = origin.y + (y + 1) * vs;
         const wz = origin.z + (z + 0.5) * vs;
+        if (wy < 2.2) break;
         const h = uhash(Math.floor(wx), Math.floor(wz), world.seed + 44);
         if (h < quality.treeDensity) {
           out.push({
@@ -357,7 +363,7 @@ function collectPlacements(
           extra: isle.maxR,
         });
       }
-      if (quality.waterfalls && isle.base > 30 && isle.rnd > 0.62) {
+      if (quality.waterfalls && isle.peak > 24 && isle.rnd > 0.62) {
         const ang = isle.rnd * Math.PI * 2;
         const ex = isle.cx + Math.cos(ang) * isle.maxR * 0.82;
         const ez = isle.cz + Math.sin(ang) * isle.maxR * 0.82;
@@ -381,6 +387,24 @@ function collectPlacements(
           }
         }
       }
+    }
+  }
+
+  for (let z = 1; z < sz; z += 2) {
+    for (let x = 1; x < sx; x += 2) {
+      const wx = origin.x + (x + 0.5) * vs;
+      const wz = origin.z + (z + 0.5) * vs;
+      const L = world.landAt(wx, wz);
+      if (L.land || L.v < 0.08) continue;
+      if (uhash(Math.floor(wx), Math.floor(wz), world.seed + 17) > 0.22) continue;
+      out.push({
+        kind: "kelp",
+        x: wx,
+        y: -1.2,
+        z: wz,
+        rot: L.v * 6,
+        scale: 1.2 + L.v * 3.4,
+      });
     }
   }
 }

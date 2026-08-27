@@ -13,23 +13,31 @@ import {
   type ControlsProbe,
 } from "./flight";
 import {
+  makeAstronaut,
+  makeCloudPuff,
   makeCrystal,
   makeFern,
   makeGiantTree,
+  makeKelp,
   makeRoadster,
   makeSmallTree,
   makeSpore,
   makeWaterfallTexture,
+  paintHull,
   paintNameplate,
   type Roadster,
 } from "./flora";
-import { addLights, addSky } from "./sky";
+import { addLights, addSky, placeSkyBodies } from "./sky";
 import { WORLD_HEX } from "./palette";
 import { xmur3 } from "./rng";
-import { addPlanet, PLANET_R, type GlobeDot } from "./planet";
+import { addPlanet, PLANET_R, retintPlanet, type GlobeDot } from "./planet";
 import { makeStarbase, STARBASE_POI } from "./starbase";
 import { AirRipples } from "./ripples";
 import { CAR_SEP, minClearanceY, poseForSpawn } from "./spawn";
+import { BODIES, type BodyId } from "./bodies";
+import { makeTheater, type Theater } from "./theater";
+import { Mission, type MissionSnap, type Phase } from "./mission";
+import { GameAudio } from "./audio";
 
 export type HudPatch = {
   altitude: number;
@@ -45,6 +53,9 @@ export type HudPatch = {
   fps: number;
   cpuPct: number;
   sights: GlobeDot[];
+  mission: MissionSnap;
+  currentBody: BodyId;
+  simOffset: number;
 };
 
 type LoadedChunk = {
@@ -127,6 +138,17 @@ export class Engine {
   private guide: THREE.Vector3 | null = null;
   private spawnIdx = 0;
   private lot = new Map<number, THREE.Group>();
+  private theater: Theater;
+  private mission: Mission;
+  private audio = new GameAudio();
+  private starbaseRoot: THREE.Group;
+  private kelp: THREE.InstancedMesh;
+  private clouds: THREE.InstancedMesh;
+  private astronaut: THREE.Group;
+  private hullColor = 0xb42318;
+  private currentBody: BodyId = "earth";
+  private simOffset = 0;
+  private chunksVisible = true;
 
   private treeTrunk: THREE.InstancedMesh;
   private treeCanopy: THREE.InstancedMesh;
@@ -176,8 +198,25 @@ export class Engine {
 
     this.sky = addSky(this.scene);
     this.lights = addLights(this.scene, this.quality.shadows);
-    this.planet = addPlanet(this.scene);
-    this.scene.add(makeStarbase());
+    this.planet = addPlanet(this.scene, this.seed, "earth");
+    this.starbaseRoot = makeStarbase();
+    this.scene.add(this.starbaseRoot);
+    this.theater = makeTheater();
+    this.scene.add(this.theater.root);
+    this.mission = new Mission(this.theater, this.camera, {
+      arrive: (id) => this.arrive(id),
+      hideCraft: (v) => {
+        this.craft.visible = !v;
+      },
+      setAstronaut: (v) => {
+        this.astronaut.visible = v;
+        this.craft.visible = !v;
+      },
+      addSimMs: (ms) => {
+        this.simOffset += ms;
+      },
+      setSpace: (v) => this.setSpace(v),
+    });
     this.dressLot();
 
     const { trunkGeo, canopyGeo } = makeSmallTree();
@@ -226,11 +265,37 @@ export class Engine {
       this.sporeOffsets[i * 3 + 1] = (Math.random() - 0.5) * 40;
       this.sporeOffsets[i * 3 + 2] = (Math.random() - 0.5) * 70;
     }
+    this.kelp = new THREE.InstancedMesh(
+      makeKelp(),
+      new THREE.MeshLambertMaterial({ color: 0x1d6a58, side: THREE.DoubleSide }),
+      700,
+    );
+    this.clouds = new THREE.InstancedMesh(
+      makeCloudPuff(),
+      new THREE.MeshLambertMaterial({
+        color: 0xe8f0f2,
+        transparent: true,
+        opacity: 0.55,
+        depthWrite: false,
+      }),
+      80,
+    );
+    this.kelp.frustumCulled = false;
+    this.clouds.frustumCulled = false;
+    this.kelp.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    this.clouds.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    this.kelp.count = 0;
+    this.clouds.count = 0;
+    this.scene.add(this.kelp, this.clouds);
 
     this.fallTex = makeWaterfallTexture();
     this.roadster = makeRoadster();
     this.craft = this.roadster.group;
     this.scene.add(this.craft);
+    this.astronaut = makeAstronaut();
+    this.astronaut.visible = false;
+    this.scene.add(this.astronaut);
+    paintHull(this.craft, this.hullColor);
     this.ripples = new AirRipples();
     this.scene.add(this.ripples.group);
 
@@ -258,6 +323,9 @@ export class Engine {
       yaw: this.yaw,
       pitch: this.pitch,
       roll: this.roll,
+      color: this.hullColor,
+      lift: this.mission.phase === "lift" || this.mission.phase === "hold" ? this.mission.dest : null,
+      body: this.currentBody,
     };
   }
 
@@ -300,6 +368,27 @@ export class Engine {
     paintNameplate(this.roadster.nameplate, name);
   }
 
+  setHullColor(hex: number) {
+    this.hullColor = hex;
+    paintHull(this.craft, hex);
+  }
+
+  beginGo(id: BodyId) {
+    this.mission.go(id);
+  }
+
+  beginEva() {
+    this.mission.eva();
+  }
+
+  returnToShip() {
+    this.mission.returnShip();
+  }
+
+  observeLift() {
+    this.mission.observeLift();
+  }
+
   superspeedTo(x: number, y: number, z: number) {
     this.guide = new THREE.Vector3(x, y, z);
     this.playing = true;
@@ -308,7 +397,15 @@ export class Engine {
   setRemote(
     id: string,
     name: string,
-    s: { x: number; y: number; z: number; yaw: number; pitch: number; roll: number },
+    s: {
+      x: number;
+      y: number;
+      z: number;
+      yaw: number;
+      pitch: number;
+      roll: number;
+      color?: number;
+    },
   ) {
     let slot = this.remotes.get(id);
     if (!slot) {
@@ -319,6 +416,7 @@ export class Engine {
         }
       });
       paintNameplate(r.nameplate, name);
+      if (typeof s.color === "number") paintHull(r.group, s.color);
       this.scene.add(r.group);
       slot = {
         mesh: r.group,
@@ -331,6 +429,7 @@ export class Engine {
       this.remotes.set(id, slot);
     } else {
       paintNameplate(slot.plate, name);
+      if (typeof s.color === "number") paintHull(slot.mesh, s.color);
     }
     slot.pos.set(s.x, s.y, s.z);
     slot.yaw = s.yaw;
@@ -352,9 +451,18 @@ export class Engine {
   setPlaying(v: boolean) {
     this.playing = v;
     if (v) {
+      this.audio.unlock();
       this.timer.update();
       this.timer.getDelta();
     }
+  }
+
+  unlockAudio() {
+    this.audio.unlock();
+  }
+
+  setMuted(v: boolean) {
+    this.audio.setMuted(v);
   }
 
   setDetail(t: number) {
@@ -407,6 +515,7 @@ export class Engine {
     this.waterMat.dispose();
     this.fallTex.dispose();
     this.ripples.dispose();
+    this.audio.dispose();
     this.planet.tex.dispose();
     this.planet.mesh.geometry.dispose();
     this.timer.dispose();
@@ -569,6 +678,7 @@ export class Engine {
     let ti = 0;
     let fi = 0;
     let ci = 0;
+    let ki = 0;
     const dummy = this.dummy;
     for (const ch of this.chunks.values()) {
       for (const p of ch.placements) {
@@ -594,6 +704,13 @@ export class Engine {
           dummy.updateMatrix();
           this.crystals.setMatrixAt(ci, dummy.matrix);
           ci++;
+        } else if (p.kind === "kelp" && ki < 700) {
+          dummy.position.set(p.x, p.y, p.z);
+          dummy.rotation.set(0.05, p.rot, 0);
+          dummy.scale.setScalar(p.scale);
+          dummy.updateMatrix();
+          this.kelp.setMatrixAt(ki, dummy.matrix);
+          ki++;
         }
       }
     }
@@ -601,10 +718,13 @@ export class Engine {
     this.treeCanopy.count = ti;
     this.ferns.count = fi;
     this.crystals.count = ci;
+    this.kelp.count = this.chunksVisible ? ki : 0;
     this.treeTrunk.instanceMatrix.needsUpdate = true;
     this.treeCanopy.instanceMatrix.needsUpdate = true;
     this.ferns.instanceMatrix.needsUpdate = true;
     this.crystals.instanceMatrix.needsUpdate = true;
+    this.kelp.instanceMatrix.needsUpdate = true;
+    this.placeClouds();
     this.instancesDirty = false;
   }
 
@@ -614,16 +734,48 @@ export class Engine {
     const dt = Math.min(this.timer.getDelta(), 0.1);
     this.input.tick(dt);
 
-    if (this.playing) this.integrate(dt);
+    if (this.playing) {
+      const cinematic = this.mission.inCinematic();
+      if (!cinematic || this.mission.phase === "eva") this.integrate(dt);
+      this.mission.tick(dt, this.pos, this.craft, {
+        yaw:
+          (this.input.axes.rollL.held ? 1 : 0) -
+          (this.input.axes.rollR.held ? 1 : 0) +
+          this.touch.lookX,
+        pitch:
+          (this.input.axes.pitchUp.held ? 1 : 0) -
+          (this.input.axes.pitchDn.held ? 1 : 0) -
+          this.touch.lookY,
+        zoomIn: this.input.zoomIn,
+        zoomOut: this.input.zoomOut,
+      });
+      this.audio.sync(this.mission.phase, this.mission.fueling);
+    }
 
     this.markStream();
     this.buildNext();
     if (this.queue.length > 8) this.buildNext();
     if (this.instancesDirty) this.rebuildInstances();
 
-    this.updateCraftCamera(dt);
+    if (!this.mission.inCinematic() || this.mission.phase === "eva" || this.mission.phase === "board") {
+      this.updateCraftCamera(dt);
+    }
+    if (this.astronaut.visible) {
+      this.astronaut.position.copy(this.pos);
+      this.astronaut.rotation.copy(this.craft.rotation);
+    }
+    this.clouds.visible = this.chunksVisible && BODIES[this.currentBody].atmo && !this.mission.inCinematic();
+    this.spores.visible = !this.mission.inCinematic();
     this.updateSpores(this.timer.getElapsed());
     this.sky.mesh.position.copy(this.pos);
+    placeSkyBodies(
+      this.sky,
+      this.pos,
+      this.currentBody,
+      this.mission.phase === "approach" || this.mission.phase === "cruise"
+        ? this.mission.dest
+        : null,
+    );
     this.ripples.pulse(this.craft, this.localWish, this.roadster.nozzles, dt);
     this.ripples.update(dt);
     this.updateRemotes(dt);
@@ -664,6 +816,9 @@ export class Engine {
           { id: "crystal-arch", kind: "sight", name: "Crystal Arch", x: 210, y: 88, z: -40 },
           { id: "gulf-deep", kind: "sight", name: "Gulf Deep", x: -40, y: 12, z: 240 },
         ],
+        mission: this.mission.snap(),
+        currentBody: this.currentBody,
+        simOffset: this.simOffset,
       });
     }
   }
@@ -872,6 +1027,108 @@ export class Engine {
     }
   }
 
+  private placeClouds() {
+    if (!this.chunksVisible) {
+      this.clouds.count = 0;
+      return;
+    }
+    const dummy = this.dummy;
+    const span = 110;
+    const pcx = Math.floor(this.pos.x / span);
+    const pcz = Math.floor(this.pos.z / span);
+    let n = 0;
+    for (let dz = -5; dz <= 5; dz++) {
+      for (let dx = -5; dx <= 5; dx++) {
+        const gx = pcx + dx;
+        const gz = pcz + dz;
+        const h = (xmur3(`${this.seed}:c:${gx}:${gz}`) >>> 0) / 0xffffffff;
+        if (h > 0.42) continue;
+        dummy.position.set(
+          gx * span + (h - 0.2) * 40,
+          78 + h * 55,
+          gz * span + ((h * 13) % 1) * 40,
+        );
+        dummy.rotation.set(0, h * 6, 0);
+        dummy.scale.setScalar(0.8 + h * 1.6);
+        dummy.updateMatrix();
+        this.clouds.setMatrixAt(n, dummy.matrix);
+        n++;
+        if (n >= 80) break;
+      }
+    }
+    this.clouds.count = n;
+    this.clouds.instanceMatrix.needsUpdate = true;
+  }
+
+  private setSpace(on: boolean) {
+    const body = BODIES[this.currentBody];
+    this.planet.mesh.visible = !on;
+    this.planet.water.visible = !on;
+    this.planet.atmo.visible = !on;
+    this.planet.clouds.visible = !on;
+    this.starbaseRoot.visible = !on && !body.gas;
+    this.sky.mesh.visible = !on;
+    this.chunksVisible = !on && !body.gas;
+    for (const g of this.lot.values()) g.visible = !on && !body.gas;
+    for (const ch of this.chunks.values()) {
+      if (ch.solid) ch.solid.visible = this.chunksVisible;
+      if (ch.water) ch.water.visible = this.chunksVisible;
+    }
+    if (on) {
+      this.scene.background = new THREE.Color(0x02050a);
+      const fog = this.scene.fog;
+      if (fog instanceof THREE.Fog) {
+        fog.color.setHex(0x02050a);
+        fog.near = 2800;
+        fog.far = 9000;
+      }
+      this.camera.far = 9000;
+      this.camera.updateProjectionMatrix();
+    } else {
+      const fogCol = new THREE.Color(body.fog);
+      this.scene.background = fogCol;
+      const fog = this.scene.fog;
+      if (fog instanceof THREE.Fog) {
+        fog.color.copy(fogCol);
+        fog.near = body.gas ? 220 : 280;
+        fog.far = body.gas ? 1600 : 2800;
+      }
+      this.camera.far = Math.max(4200, PLANET_R * 5);
+      this.camera.updateProjectionMatrix();
+    }
+    this.instancesDirty = true;
+  }
+
+  private arrive(id: BodyId) {
+    this.currentBody = id;
+    const body = BODIES[id];
+    retintPlanet(this.planet, this.seed, id);
+    const fogCol = new THREE.Color(body.fog);
+    this.scene.background = fogCol;
+    const fog = this.scene.fog;
+    if (fog instanceof THREE.Fog) {
+      fog.color.copy(fogCol);
+      fog.near = body.gas ? 220 : 280;
+      fog.far = body.gas ? 1600 : 2800;
+    }
+    this.chunksVisible = !body.gas;
+    for (const ch of this.chunks.values()) {
+      if (ch.solid) ch.solid.visible = this.chunksVisible;
+      if (ch.water) ch.water.visible = this.chunksVisible;
+    }
+    for (const g of this.giants.values()) g.visible = this.chunksVisible;
+    for (const f of this.falls.values()) f.visible = this.chunksVisible;
+    this.treeTrunk.visible = this.chunksVisible;
+    this.treeCanopy.visible = this.chunksVisible;
+    this.ferns.visible = this.chunksVisible;
+    this.crystals.visible = this.chunksVisible;
+    this.kelp.visible = this.chunksVisible;
+    this.clouds.visible = this.chunksVisible && body.atmo;
+    this.starbaseRoot.visible = !body.gas;
+    for (const g of this.lot.values()) g.visible = !body.gas;
+    this.instancesDirty = true;
+  }
+
   private installProbe() {
     const probe: ControlsProbe = {
       getYaw: () => this.yaw,
@@ -884,6 +1141,15 @@ export class Engine {
         pitch: this.pitch,
       }),
       getCallsign: () => String(this.roadster.nameplate.userData.label ?? ""),
+      getMission: () => {
+        const s = this.mission.snap();
+        return { phase: s.phase, fuel: s.fuel, callout: s.callout };
+      },
+      skipTo: (phase, dest) => {
+        this.audio.unlock();
+        this.mission.skipTo(phase as Phase, (dest as BodyId) || this.mission.dest || "moon");
+      },
+      beginGo: (id) => this.beginGo(id as BodyId),
       applySpawn: (idx) => this.applySpawn(idx),
       setCallsign: (name) => this.setCallsign(name),
       setSteer: (v) => this.input.setSteer(v),

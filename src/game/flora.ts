@@ -9,6 +9,44 @@ export function makeSmallTree() {
   return { trunkGeo, canopyGeo };
 }
 
+export function makeKelp() {
+  const geo = new THREE.ConeGeometry(0.22, 5.4, 4);
+  geo.translate(0, 2.7, 0);
+  return geo;
+}
+
+export function makeCloudPuff() {
+  const geo = new THREE.SphereGeometry(7.5, 8, 6);
+  geo.scale(1.8, 0.42, 1.15);
+  return geo;
+}
+
+export function makeAstronaut(): THREE.Group {
+  const g = new THREE.Group();
+  const suit = new THREE.MeshLambertMaterial({ color: 0xe8ece8 });
+  const visor = new THREE.MeshPhongMaterial({
+    color: 0x1a2a38,
+    shininess: 140,
+    specular: 0x88c8e0,
+  });
+  const pack = new THREE.MeshLambertMaterial({ color: 0xc8ccc8 });
+  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.32, 0.85, 4, 8), suit);
+  body.position.y = 0.9;
+  g.add(body);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.28, 10, 8), suit);
+  head.position.y = 1.55;
+  g.add(head);
+  const glass = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), visor);
+  glass.position.set(0, 1.55, -0.12);
+  glass.scale.set(1, 0.85, 0.55);
+  g.add(glass);
+  const tank = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.55, 0.18), pack);
+  tank.position.set(0, 1.05, 0.28);
+  g.add(tank);
+  g.scale.setScalar(1.6);
+  return g;
+}
+
 export function makeFern() {
   const geo = new THREE.ConeGeometry(0.55, 1.3, 5, 1, true);
   geo.translate(0, 0.65, 0);
@@ -195,9 +233,11 @@ export function makeRoadster(): Roadster {
   // Hull: long nose, low cabin — Roadster silhouette. Forward is −Z.
   const hull = new THREE.Mesh(new THREE.BoxGeometry(1.42, 0.42, 3.15), body);
   hull.position.y = 0.38;
+  hull.userData.hull = true;
   g.add(hull);
   const nose = new THREE.Mesh(new THREE.BoxGeometry(1.28, 0.3, 0.85), body);
   nose.position.set(0, 0.3, -1.82);
+  nose.userData.hull = true;
   g.add(nose);
   const splitter = new THREE.Mesh(new THREE.BoxGeometry(1.36, 0.06, 0.4), dark);
   splitter.position.set(0, 0.14, -2.12);
@@ -207,6 +247,7 @@ export function makeRoadster(): Roadster {
   g.add(cabin);
   const roof = new THREE.Mesh(new THREE.BoxGeometry(1.12, 0.05, 1.05), body);
   roof.position.set(0, 0.88, -0.08);
+  roof.userData.hull = true;
   g.add(roof);
   const belt = new THREE.Mesh(new THREE.BoxGeometry(1.46, 0.05, 2.9), silver);
   belt.position.y = 0.58;
@@ -385,5 +426,13 @@ export function paintNameplate(root: THREE.Object3D, text: string) {
     m.needsUpdate = true;
     prev?.dispose();
   }
+}
+
+export function paintHull(root: THREE.Object3D, hex: number) {
+  root.traverse((o) => {
+    if (!o.userData.hull || !(o instanceof THREE.Mesh)) return;
+    const mat = o.material as THREE.MeshPhongMaterial;
+    if (mat?.color) mat.color.setHex(hex);
+  });
 }
 

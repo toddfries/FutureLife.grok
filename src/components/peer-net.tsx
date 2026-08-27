@@ -13,6 +13,8 @@ type Pose = {
   pitch: number;
   roll: number;
   name: string;
+  color?: number;
+  lift?: string | null;
 };
 
 export function PeerNet() {
@@ -62,6 +64,7 @@ export function PeerNet() {
         if (![d.x, d.y, d.z, d.yaw].every((n) => typeof n === "number")) return;
         const tag = d.name || from;
         engineHandle.current?.setRemote(from, tag, d);
+        if (d.lift) engineHandle.current?.observeLift();
         const next: RemotePilot = {
           id: from,
           kind: "player",
@@ -72,6 +75,7 @@ export function PeerNet() {
           yaw: d.yaw,
           pitch: d.pitch,
           roll: d.roll,
+          color: "color" in d && typeof d.color === "number" ? d.color : undefined,
         };
         const cur = useFlight.getState().remotes;
         const i = cur.findIndex((r) => r.id === from);
@@ -92,7 +96,8 @@ export function PeerNet() {
       if (!eng) return;
       const s = eng.snapshot();
       const name = useFlight.getState().callsign || "Guest";
-      p2p.broadcast({ ...s, name } satisfies Pose);
+      const color = useFlight.getState().hullColor;
+      p2p.broadcast({ ...s, name, color } satisfies Pose);
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
